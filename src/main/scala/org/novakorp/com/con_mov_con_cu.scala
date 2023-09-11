@@ -15,7 +15,7 @@ object con_mov_con_cu extends SparkSessionWrapper  {
         val ventana = Window.partitionBy("barras").orderBy("fecha_vigencia_desde")
 
         // Costo unificado y en cada fila su costo anterior
-        val df_costo_unificado_con_anterior = df_costo_unificado.withColumn("costo_anterior", lag("costo", 1).over(ventana)).filter(f"fecha_vigencia_desde BETWEEN ${fecha_inicial} AND ${fecha_final}")
+        val df_costo_unificado_con_anterior = df_costo_unificado.withColumn("costo_anterior", when(lag("costo", 1).over(ventana).isNull, col("costo")).otherwise(lag("costo", 1).over(ventana))).filter(f"fecha_vigencia_desde BETWEEN ${fecha_inicial} AND ${fecha_final}")
 
         // Se joinean los artículos con movimientos y los con cambio de precio
         val df_con_mov_con_cu: DataFrame = df_costo_unificado_con_anterior.as("actual").join(df_mov_agrupado, (col("barras") === col("codigo_barra")) && (col("fecha") === col("fecha_vigencia_desde")), "inner").select(col("actual.*"), col("codigo_articulo").as("codigo"), col("movimientos_agrupados"))
@@ -24,7 +24,7 @@ object con_mov_con_cu extends SparkSessionWrapper  {
         val df_stock_filtrado = df_stock.filter(f"fecha_stock BEETWEEN ${fecha_inicial} AND ${fecha_final}")
 
         // Se joinea el stock actual junto con los artículos con movimientos y sus precios, a su vez se calcula RxT
-        val df_pre_final: DataFrame = df_stock_filtrado.as("stock").join(df_con_mov_con_cu.as("precios"), Seq("codigo"), "inner").withColumn("resultado_por_tenencia", ((col("costo_unitario") - col("costo_anterior")) * col("existencia"))).select(col("codigo"), col("barras"), col("precios.fecha_stock"), col("movimientos_agrupados"), col("stock.existencia").as("total_unidades"), col("costo_unitario"), col("costo_anterior"), col("precio_mayorista").as("precio_actual_mayorista"), col("precio_minorista").as("precio_actual_minorista"), col("resultado_por_tenencia"))//.distinct
+        val df_pre_final: DataFrame = df_stock_filtrado.as("stock").join(df_con_mov_con_cu.as("precios"),(df_stock_filtrado("codigo")===df_con_mov_con_cu("codigo"))&&(df_stock_filtrado("fecha_stock")===df_con_mov_con_cu("fecha_vigencia_desde")) , "inner").withColumn("resultado_por_tenencia", ((col("costo_unitario") - col("costo_anterior")) * col("existencia"))).select(col("codigo"), col("barras"), col("precios.fecha_stock"), col("movimientos_agrupados"), col("stock.existencia").as("total_unidades"), col("costo_unitario"), col("costo_anterior"), col("precio_mayorista").as("precio_actual_mayorista"), col("precio_minorista").as("precio_actual_minorista"), col("resultado_por_tenencia"))//.distinct
 
         df_pre_final
     }
