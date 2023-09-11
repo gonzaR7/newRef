@@ -2,6 +2,9 @@ package org.novakorp.com
 import org.apache.spark.sql.{DataFrame, Row}
 import org.apache.spark.sql.functions._
 import org.apache.spark.storage.StorageLevel
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+
 
 
 object entry extends SparkSessionWrapper {
@@ -13,6 +16,15 @@ object entry extends SparkSessionWrapper {
     val outputTable: String = args(2) //Ejemplo "refined.stock_diario_sin_desc"
     val fecha_inicial_corrida: String = args(3) //Va cambiando cada corrida, lo maneja NiFi Ej: 2023-07-10
     val fecha_final_corrida: String = args(4) //Va cambiando cada corrida, lo maneja NiFi Ejemplo 2023-07-20 (si fueran lotes de procesamiento de a 10 dias)
+
+    // Obtén la fecha actual
+    val fechaHoy = LocalDate.now()
+
+    // Define el formato deseado
+    val formato = DateTimeFormatter.ofPattern("yyyyMMdd")
+
+    // Formatea la fecha en el formato 'yyyyMMdd' como un string
+    val fechaFormateada = fechaHoy.format(formato)
 
     print("FECHAS")
     println("")
@@ -58,43 +70,39 @@ object entry extends SparkSessionWrapper {
     println("")
 
     // CON MOVIMIENTO Y CAMBIO DE PRECIO
-    df_con_mov_con_cu = con_mov_con_cu.CalcularDataFrame(df_movimientos, df_costo_unificado, df_stock, fecha_inicial_corrida, fecha_final_corrida)
+    val df_con_mov_con_cu = con_mov_con_cu.CalcularDataFrame(df_movimientos, df_costo_unificado, df_stock, fecha_inicial_corrida, fecha_final_corrida)
 
     println("")
     println(s"Procesados con movimientos y cambio de precio para")
     println("")
 
     // CON MOVIMIENTOS SIN CAMBIO DE PRECIO
-    df_con_movimientos = con_movimientos.CalcularDataFrame(df_movimientos, df_costo_unificado, df_stock, fecha_inicial_corrida, fecha_final_corrida)
+    val df_con_movimientos = con_movimientos.CalcularDataFrame(df_con_mov_con_cu,df_movimientos, df_costo_unificado, df_stock, fecha_inicial_corrida, fecha_final_corrida)
 
     println("")
     println(s"Procesados con movimientos ")
     println("")
 
     // CON CAMBIO DE PRECIO SIN MOVIMIENTO
-    df_cambio_precio = cambio_precio.CalcularDataFrame(df_movimientos, df_costo_unificado, df_articulos, df_stock, fecha_inicial_corrida, fecha_final_corrida)
+    val df_cambio_precio = cambio_precio.CalcularDataFrame(df_movimientos, df_costo_unificado, df_articulos, df_stock, fecha_inicial_corrida, fecha_final_corrida)
 
     println("")
     println(s"Procesados con cambio precio")
     println("")
 
     // SIN CAMBIO Y SIN MOVIMIENTO
-    df_sin_cambio_precio = sin_mov_ni_costo.CalcularDataFrame(df_movimientos, df_costo_unificado, df_articulos, df_stock, fecha_inicial_corrida, fecha_final_corrida)
+    val df_sin_cambio_precio = sin_mov_ni_costo.CalcularDataFrame(df_movimientos, df_costo_unificado, df_articulos, df_stock, fecha_inicial_corrida, fecha_final_corrida)
 
     println("")
     println(s"Procesados sin cambio precio ni movimientos ")
     println("")
 
-    df_hoy = df_cambio_precio.union(df_sin_cambio_precio)
+    val df_hoy = df_con_mov_con_cu.union(df_con_movimientos).union(df_cambio_precio).union(df_sin_cambio_precio)
 
-    val dfToInsert: DataFrame = df_hoy.withColumn("sucursal",lit(sucursal.concat("_").concat(currentDate.toString).replace("-", "")))
+    val dfToInsert: DataFrame = df_hoy.withColumn("sucursal",lit(sucursal.concat("_").concat(fechaFormateada)))
     functions.saveCurrentDF(dfToInsert,outputTable)
 
-    df_ref_ayer = df_hoy
-
-    df_hoy = spark.createDataFrame(spark.sparkContext.emptyRDD[Row], mySchema)
-
-  }
     println(s"Terminada la ingesta en la sucursal ${sucursal} desde ${fecha_inicial_corrida} hasta ${fecha_final_corrida}")
 
+  }
 }
