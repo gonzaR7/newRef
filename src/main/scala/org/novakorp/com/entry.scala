@@ -84,7 +84,7 @@ object entry extends SparkSessionWrapper {
     println("")
 
     // CON CAMBIO DE PRECIO SIN MOVIMIENTO
-    val df_cambio_precio = cambio_precio.CalcularDataFrame(df_movimientos, df_costo_unificado, df_stock, fecha_inicial_corrida, fecha_final_corrida)
+    val df_cambio_precio = cambio_precio.CalcularDataFrame(df_movimientos, df_costo_unificado, df_stock,df_articulos, fecha_inicial_corrida, fecha_final_corrida)
 
     println("")
     println(s"Procesados con cambio precio")

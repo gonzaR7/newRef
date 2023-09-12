@@ -10,7 +10,6 @@ import java.time.LocalDate
 
 object cambio_precio extends SparkSessionWrapper  {
 
-  val fecha_inicio_tiempos = "2000-01-02"
   def CalcularDataFrame(df_movimientos: DataFrame , df_costo_unificado: DataFrame , df_stock: DataFrame, df_articulos: DataFrame, fecha_inicial: String, fecha_final: String) : DataFrame = {
 
     // Definir una ventana ordenada por la columna "fecha_vigencia_desde" para cada "codigo_barras"
