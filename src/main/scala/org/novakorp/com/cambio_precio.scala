@@ -11,14 +11,16 @@ import java.time.LocalDate
 object cambio_precio extends SparkSessionWrapper  {
 
   val fecha_inicio_tiempos = "2000-01-02"
-  def CalcularDataFrame(df_movimientos: DataFrame , df_costo_unificado: DataFrame , df_stock: DataFrame , fecha_inicial: String, fecha_final: String) : DataFrame = {
+  def CalcularDataFrame(df_movimientos: DataFrame , df_costo_unificado: DataFrame , df_stock: DataFrame, df_articulos: DataFrame, fecha_inicial: String, fecha_final: String) : DataFrame = {
 
     // Definir una ventana ordenada por la columna "fecha_vigencia_desde" para cada "codigo_barras"
     val ventana = Window.partitionBy("barras").orderBy("fecha_vigencia_desde")
-    // Costo unificado y en cada fila su costo anterio
+    // Costo unificado y en cada fila su costo anterior
     val df_costo_unificado_con_anterior = df_costo_unificado.withColumn("costo_anterior", when(lag("costo", 1).over(ventana).isNull, col("costo")).otherwise(lag("costo", 1).over(ventana)))
     val df_costo_unificado_periodo=df_costo_unificado_con_anterior.filter(f"fecha_vigencia_desde BETWEEN ${fecha_inicial} AND ${fecha_final}")
-    val df_sin_mov_cu=df_costo_unificado_periodo.as("cu").join(df_movimientos,(df_costo_unificado_periodo("barras")===df_movimientos("codigo_barra")),"left_outer").select(col("cu.*"),col("codigo_articulo").as("codigo")).withColumnRenamed("fecha_vigencia_desde","fecha_stock")
+    val df_sin_mov_cu_temp=df_costo_unificado_periodo.as("cu").join(df_movimientos,(df_costo_unificado_periodo("barras")===df_movimientos("codigo_barra")),"left_outer").select(col("cu.*"),col("codigo_articulo").as("codigo")).withColumnRenamed("fecha_vigencia_desde","fecha_stock")
+    // Join con articulos para agregar Codigo.
+    val df_sin_mov_cu=df_sin_mov_cu_temp.as("cu").join(df_articulos,(df_sin_mov_cu_temp("barras")===df_articulos("codigo_barra")),"inner").select(col("cu.*"),col("codigo"))
     // Se filtra el stock para el día de hoy (ya que al haber movimientos, se realizó el cálculo para tener el nuevo stock del día)
     val df_stock_filtrado = df_stock.filter(col("fecha_stock") <= fecha_final)
     // Se agrupa el stock del día y se trae la fecha más reciente (stock actual)

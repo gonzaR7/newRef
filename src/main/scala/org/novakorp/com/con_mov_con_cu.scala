@@ -28,5 +28,4 @@ object con_mov_con_cu extends SparkSessionWrapper  {
 
         df_pre_final
     }
-
 }
