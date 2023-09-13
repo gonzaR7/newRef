@@ -18,7 +18,6 @@ object sin_mov_ni_costo extends SparkSessionWrapper  {
       // Costo unificado y en cada fila su costo anterior
       val df_costo_unificado_con_anterior = df_costo_unificado.withColumn("costo_anterior", when(lag("costo", 1).over(ventana).isNull, col("costo")).otherwise(lag("costo", 1).over(ventana)))
 
-
       // Crear un DataFrame con todas las fechas en el período
       val df_fechas = spark.sql(s"SELECT sequence(to_date('$fecha_inicial'), to_date('$fecha_final'), interval 1 day) AS fecha").withColumn("fecha", explode(col("fecha")))
 
@@ -27,10 +26,14 @@ object sin_mov_ni_costo extends SparkSessionWrapper  {
         .join(df_movimientos, Seq("codigo_barra", "fecha"), "left_anti")
         .join(df_costo_unificado.select(col("barras").as("codigo_barra"), col("fecha_vigencia_desde").as("fecha")), Seq("codigo_barra", "fecha"), "left_anti")
 
+        //Para cada codigo de barra con su fecha me traigo la fecha de su ultimo cambio de precio
+      val joinedDF = df_articulos_no_movimiento_no_costo
+        .join(df_costo_unificado_con_anterior,(df_articulos_no_movimiento_no_costo("codigo_barra") === df_costo_unificado_con_anterior("barras")) && (df_costo_unificado_con_anterior("fecha_vigencia_desde") < df_mov_agrupado("fecha")),"inner")
+        .groupBy(df_articulos_no_movimiento_no_costo("codigo_barra"),df_articulos_no_movimiento_no_costo("fecha")).agg(max(df_costo_unificado_con_anterior("fecha_vigencia_desde"))
+        .alias("max_fecha_vigencia"))
 
-//    val joinedDF = df_articulos_no_movimiento_no_costo.join(df_costo_unificado_con_anterior,(df_articulos_no_movimiento_no_costo("codigo_barra") === df_costo_unificado_con_anterior("barras")) && (df_costo_unificado_con_anterior("fecha_vigencia_desde") < df_articulos_no_movimiento_no_costo("fecha")),"inner").groupBy(df_mov_agrupado("codigo_barra")).agg(max(df_costo_unificado_con_anterior("fecha_vigencia_desde")).alias("max_fecha_vigencia"))
-//
-//    val df_costo_unificado_actual = joinedDF.join(df_costo_unificado_con_anterior.as("cu"),(joinedDF("codigo_barra") === df_costo_unificado_con_anterior("barras")) && (joinedDF("max_fecha_vigencia") === df_costo_unificado_con_anterior("fecha_vigencia_desde")),"inner").select(col("cu.*"))
+        //Para tener los campos de df_costo_unificado_con_anterior
+      val df_costo_unificado_actual = joinedDF.join(df_costo_unificado_con_anterior.as("cu"),(joinedDF("codigo_barra") === df_costo_unificado_con_anterior("barras")) && (joinedDF("max_fecha_vigencia") === df_costo_unificado_con_anterior("fecha_vigencia_desde")),"inner").select(col("cu.*"))
 
       df_articulos_no_movimiento_no_costo
 
