@@ -12,19 +12,13 @@ object con_movimientos extends SparkSessionWrapper  {
 
   //CON MOVIMIENTOS
 
-  def CalcularDataFrame(df_con_mov_con_cu:DataFrame, df_movimientos: DataFrame , df_costo_unificado: DataFrame, df_stock: DataFrame,fecha_inicial: String, fecha_final: String): DataFrame = {
+  def CalcularDataFrame(df_con_mov_con_cu:DataFrame, df_movimientos: DataFrame , df_costo_unificado_con_anterior: DataFrame, df_stock: DataFrame,fecha_inicial: String, fecha_final: String): DataFrame = {
 
     // Se filtran los artículos que no tienen cambio de precio en el día
     val df_con_mov_filtrado: DataFrame = df_movimientos.join(df_con_mov_con_cu, df_movimientos("codigo_barra")===df_con_mov_con_cu("barras"), "left_outer")
 
     // Se agrupan los movimientos del día por codigo
     val df_mov_agrupado: DataFrame = df_con_mov_filtrado.groupBy("codigo_articulo", "fecha", "codigo_barra").agg(sum(col("cantidad_movimiento") * col("multiplicador_stock").cast("int")).as("movimientos_agrupados"))
-
-    // Definir una ventana ordenada por la columna "fecha_vigencia_desde" para cada "codigo_barras"
-    val ventana = Window.partitionBy("barras").orderBy("id_costo_unificado")
-
-    // Costo unificado y en cada fila su costo anterior
-    val df_costo_unificado_con_anterior = df_costo_unificado.withColumn("costo_anterior", when(lag("costo", 1).over(ventana).isNull, col("costo")).otherwise(lag("costo", 1).over(ventana)))
 
     val joinedDF = df_mov_agrupado
       .join(df_costo_unificado_con_anterior,(df_mov_agrupado("codigo_barra") === df_costo_unificado_con_anterior("barras")) && (df_costo_unificado_con_anterior("fecha_vigencia_desde") < df_mov_agrupado("fecha")),"inner")

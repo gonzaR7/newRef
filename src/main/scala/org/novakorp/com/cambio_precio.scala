@@ -10,13 +10,7 @@ import java.time.LocalDate
 
 object cambio_precio extends SparkSessionWrapper  {
 
-  def CalcularDataFrame(df_movimientos: DataFrame , df_costo_unificado: DataFrame , df_stock: DataFrame, df_articulos: DataFrame, fecha_inicial: String, fecha_final: String) : DataFrame = {
-
-    // Definir una ventana ordenada por la columna "fecha_vigencia_desde" para cada "codigo_barras"
-    val ventana = Window.partitionBy("barras").orderBy("id_costo_unificado")
-
-    // Costo unificado y en cada fila su costo anterior
-    val df_costo_unificado_con_anterior = df_costo_unificado.withColumn("costo_anterior", when(lag("costo", 1).over(ventana).isNull, col("costo")).otherwise(lag("costo", 1).over(ventana)))
+  def CalcularDataFrame(df_movimientos: DataFrame , df_costo_unificado_con_anterior: DataFrame , df_stock: DataFrame, df_articulos: DataFrame, fecha_inicial: String, fecha_final: String) : DataFrame = {
 
     // Definir una ventana particionada por "fecha_vigencia_desde" y "barras"
     // y ordenada por "id_costo_unificado" en orden descendente

@@ -6,23 +6,19 @@ import org.apache.spark.sql.expressions.Window
 
 object con_mov_con_cu extends SparkSessionWrapper  {
 
-    def CalcularDataFrame(df_movimientos: DataFrame , df_costo_unificado: DataFrame,  df_stock: DataFrame,fecha_inicial: String, fecha_final: String): DataFrame = {
+    def CalcularDataFrame(df_movimientos: DataFrame , df_costo_unificado_con_anterior: DataFrame,  df_stock: DataFrame,fecha_inicial: String, fecha_final: String): DataFrame = {
 
         // Se agrupan los movimientos del día por codigo
         val df_mov_agrupado: DataFrame = df_movimientos.groupBy("codigo_articulo", "fecha", "codigo_barra").agg(sum(col("cantidad_movimiento") * col("multiplicador_stock").cast("int")).as("movimientos_agrupados"))
 
-        // Definir una ventana ordenada por la columna "fecha_vigencia_desde" para cada "codigo_barras"
-        val ventana = Window.partitionBy("barras").orderBy("id_costo_unificado")
-
-        // Costo unificado y en cada fila su costo anterior
-        val df_costo_unificado_con_anterior = df_costo_unificado.withColumn("costo_anterior", when(lag("costo", 1).over(ventana).isNull, col("costo")).otherwise(lag("costo", 1).over(ventana))).filter(f"fecha_vigencia_desde BETWEEN ${fecha_inicial} AND ${fecha_final}")
+        val df_costo_unificado_filtered= df_costo_unificado_con_anterior.filter(f"fecha_vigencia_desde BETWEEN ${fecha_inicial} AND ${fecha_final}")
 
         // Definir una ventana particionada por "fecha_vigencia_desde" y "barras"
         // y ordenada por "id_costo_unificado" en orden descendente
         val windowSpec = Window.partitionBy("fecha_vigencia_desde", "barras").orderBy(desc("id_costo_unificado"))
 
         // Agregar una columna de número de fila basada en la ventana
-        val rankedDf = df_costo_unificado_con_anterior.withColumn("row_num", row_number().over(windowSpec))
+        val rankedDf = df_costo_unificado_filtered.withColumn("row_num", row_number().over(windowSpec))
 
         // Filtrar las filas donde row_num es igual a 1 (la primera fila en cada grupo)
         val resultDf = rankedDf.filter(col("row_num") === 1).drop("row_num")

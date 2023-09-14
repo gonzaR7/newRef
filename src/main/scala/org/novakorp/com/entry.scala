@@ -4,7 +4,7 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.storage.StorageLevel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-
+import org.novakorp.com.functions
 
 
 object entry extends SparkSessionWrapper {
@@ -48,6 +48,8 @@ object entry extends SparkSessionWrapper {
 
     val df_stock = spark.sql(query_stock)
 
+    val df_costo_unificado_con_anterior=functions.agregarCostoAnterior(df_costo_unificado)
+
     println("")
     println("Hecho!")
     println("")
@@ -57,28 +59,28 @@ object entry extends SparkSessionWrapper {
     println("")
 
     // CON MOVIMIENTO Y CAMBIO DE PRECIO
-    val df_con_mov_con_cu = con_mov_con_cu.CalcularDataFrame(df_movimientos, df_costo_unificado, df_stock, fecha_inicial_corrida, fecha_final_corrida)
+    val df_con_mov_con_cu = con_mov_con_cu.CalcularDataFrame(df_movimientos, df_costo_unificado_con_anterior, df_stock, fecha_inicial_corrida, fecha_final_corrida)
 
     println("")
     println(s"Procesados con movimientos y cambio de precio para")
     println("")
 
     // CON MOVIMIENTOS SIN CAMBIO DE PRECIO
-    val df_con_movimientos = con_movimientos.CalcularDataFrame(df_con_mov_con_cu,df_movimientos, df_costo_unificado, df_stock, fecha_inicial_corrida, fecha_final_corrida)
+    val df_con_movimientos = con_movimientos.CalcularDataFrame(df_con_mov_con_cu,df_movimientos, df_costo_unificado_con_anterior, df_stock, fecha_inicial_corrida, fecha_final_corrida)
 
     println("")
     println(s"Procesados con movimientos ")
     println("")
 
     // CON CAMBIO DE PRECIO SIN MOVIMIENTO
-    val df_cambio_precio = cambio_precio.CalcularDataFrame(df_movimientos, df_costo_unificado, df_stock,df_articulos, fecha_inicial_corrida, fecha_final_corrida)
+    val df_cambio_precio = cambio_precio.CalcularDataFrame(df_movimientos, df_costo_unificado_con_anterior, df_stock,df_articulos, fecha_inicial_corrida, fecha_final_corrida)
 
     println("")
     println(s"Procesados con cambio precio")
     println("")
 
     // SIN CAMBIO Y SIN MOVIMIENTO
-    val df_sin_mov_sin_cambio_precio = sin_mov_ni_costo.CalcularDataFrame(df_movimientos, df_costo_unificado, df_articulos, df_stock, fecha_inicial_corrida, fecha_final_corrida)
+    val df_sin_mov_sin_cambio_precio = sin_mov_ni_costo.CalcularDataFrame(df_movimientos, df_costo_unificado_con_anterior, df_articulos, df_stock, fecha_inicial_corrida, fecha_final_corrida)
 
     println("")
     println(s"Procesados sin cambio precio ni movimientos ")
