@@ -30,22 +30,23 @@ object cambio_precio extends SparkSessionWrapper  {
 
     val df_costo_unificado_periodo=resultDf.filter(f"fecha_vigencia_desde BETWEEN ${fecha_inicial} AND ${fecha_final}")
 
-    val df_sin_mov_cu_temp=df_costo_unificado_periodo.as("cu").join(df_movimientos,(df_costo_unificado_periodo("barras")===df_movimientos("codigo_barra")),"left_outer").select(col("cu.*"),col("codigo_articulo").as("codigo")).withColumnRenamed("fecha_vigencia_desde","fecha_stock")
+    val df_sin_mov_cu_temp=df_costo_unificado_periodo.as("cu").join(df_movimientos,(df_costo_unificado_periodo("barras")===df_movimientos("codigo_barra")),"left_outer").select(col("cu.*")).withColumnRenamed("fecha_vigencia_desde","fecha_stock")
 
     // Join con articulos para agregar Codigo.
     val df_sin_mov_cu=df_sin_mov_cu_temp.as("cu").join(df_articulos,(df_sin_mov_cu_temp("barras")===df_articulos("codigo_barra")),"inner").select(col("cu.*"),col("codigo"))
 
-    // Se filtra el stock para el día de hoy (ya que al haber movimientos, se realizó el cálculo para tener el nuevo stock del día)
-    val df_stock_filtrado = df_stock.filter(col("fecha_stock") <= fecha_final)
-
-    // Se agrupa el stock del día y se trae la fecha más reciente (stock actual)
-    val df_stock_agrupado = df_stock_filtrado.groupBy("codigo").agg(max("fecha_stock").as("max_fecha_stock"))//.orderBy(desc("max_fecha_stock"))
+    val joinedDF = df_sin_mov_cu
+      .join(df_stock,(df_sin_mov_cu("codigo") === df_stock("codigo")) && (df_stock("fecha_stock") < df_sin_mov_cu("fecha_stock")),"inner")
+      .groupBy(df_sin_mov_cu("codigo"),df_sin_mov_cu("fecha_stock")).agg(max(df_stock("fecha_stock"))
+      .alias("max_fecha_stock"))
 
     // Joineamos la fecha más actual con el stock, para traer el valor de existencia junto con el código y la fecha_stock
-    val df_join_stock = df_stock_agrupado.join(df_stock, Seq("codigo"), "inner").filter(col("fecha_stock") === col("max_fecha_stock")).select(col("codigo"), col("existencia"), col("fecha_stock"))
 
-    // Se joinea el stock actual junto con los artículos con movimientos y sus precios, a su vez se calcula RxT
-    val df_pre_final: DataFrame = df_join_stock.as("stock").join(df_sin_mov_cu.as("precios"), Seq("codigo"), "inner").withColumn("movimientos_agrupados", lit(0)).withColumn("resultado_por_tenencia", ((col("costo_unitario") - col("costo_anterior")) * col("existencia"))).select(col("codigo"), col("barras"), col("precios.fecha_stock"), col("movimientos_agrupados"), col("stock.existencia").as("total_unidades"), col("costo_unitario"), col("costo_anterior"), col("precio_actual_mayorista"), col("precio_actual_minorista"), col("resultado_por_tenencia")).distinct
+    val df_sin_mov_cu_max_stock = joinedDF.join(df_sin_mov_cu, Seq("codigo","fecha_stock"), "inner").select(df_sin_mov_cu("barras"),df_sin_mov_cu("fecha_stock"), df_sin_mov_cu("costo").as("costo_unitario"),df_sin_mov_cu("costo_anterior"), df_sin_mov_cu("precio_minorista").as("precio_actual_minorista"), df_sin_mov_cu("precio_mayorista").as("precio_actual_mayorista"),joinedDF("max_fecha_stock"),joinedDF("codigo"))
+
+    val df_join_stock = df_sin_mov_cu_max_stock.join(df_stock, (df_sin_mov_cu_max_stock("codigo")===df_stock("codigo")&&(df_sin_mov_cu_max_stock("max_fecha_stock")===df_stock("fecha_stock"))), "inner").select(df_sin_mov_cu_max_stock("barras"),df_sin_mov_cu_max_stock("costo_unitario"),df_sin_mov_cu_max_stock("costo_anterior"),df_sin_mov_cu_max_stock("precio_actual_minorista"),df_sin_mov_cu_max_stock("precio_actual_mayorista"),df_stock("codigo"), df_stock("existencia"), df_sin_mov_cu_max_stock("fecha_stock"))
+
+    val df_pre_final=  df_join_stock.withColumn("movimientos_agrupados", lit(0)).withColumn("resultado_por_tenencia", ((col("costo_unitario") - col("costo_anterior")) * col("existencia"))).select(col("codigo"), col("barras"), col("fecha_stock"), col("movimientos_agrupados"), col("existencia").as("total_unidades"), col("costo_unitario"), col("costo_anterior"), col("precio_actual_mayorista"), col("precio_actual_minorista"), col("resultado_por_tenencia")).distinct
 
     df_pre_final
   }
