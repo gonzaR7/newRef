@@ -13,7 +13,7 @@ object sin_mov_ni_costo extends SparkSessionWrapper  {
   def CalcularDataFrame(df_movimientos: DataFrame, df_costo_unificado: DataFrame, df_articulos: DataFrame, df_stock: DataFrame, fecha_inicial: String, fecha_final: String): DataFrame = {
 
       // Definir una ventana ordenada por la columna "fecha_vigencia_desde" para cada "codigo_barras"
-      val ventana = Window.partitionBy("barras").orderBy("fecha_vigencia_desde")
+      val ventana = Window.partitionBy("barras").orderBy("id_costo_unificado")
 
       // Costo unificado y en cada fila su costo anterior
       val df_costo_unificado_con_anterior = df_costo_unificado.withColumn("costo_anterior", when(lag("costo", 1).over(ventana).isNull, col("costo")).otherwise(lag("costo", 1).over(ventana)))
@@ -32,17 +32,10 @@ object sin_mov_ni_costo extends SparkSessionWrapper  {
         .groupBy(df_articulos_no_movimiento_no_costo("codigo_barra"),df_articulos_no_movimiento_no_costo("fecha")).agg(max(df_costo_unificado_con_anterior("fecha_vigencia_desde"))
         .alias("max_fecha_vigencia"))
 
-        //Para tener los campos de df_costo_unificado_con_anterior - COMO HAY VARIOS BARRIAS IGUALES CON DISTINTAS FECHAS Y PUEDEN TENER DISTINTOS ULTIMA FECHA_VIG_DESDE.
-      val df_costo_unificado_actual = joinedDF.join(df_costo_unificado_con_anterior.as("cu"),(joinedDF("codigo_barra") === df_costo_unificado_con_anterior("barras")) && (joinedDF("max_fecha_vigencia") === df_costo_unificado_con_anterior("fecha_vigencia_desde")),"inner").select(col("cu.*")).distinct()
-
     //PARA MI DEBERIA SER ASI: LE AGREGO LA FECHA EN df_costo_unificado_actual DEL df_articulos_no_movimiento_no_costo Y LUEGO EN df_precios JOINEO POR BARRAS Y FECHA
-//      val df_costo_unificado_actual = joinedDF.join(df_costo_unificado_con_anterior.as("cu"),(joinedDF("codigo_barra") === df_costo_unificado_con_anterior("barras")) && (joinedDF("max_fecha_vigencia") === df_costo_unificado_con_anterior("fecha_vigencia_desde")),"inner").select(col("cu.*"),joinedDF("fecha").as("fecha_df")).distinct()
-//      val df_precios = df_costo_unificado_actual.join(df_articulos_no_movimiento_no_costo, (df_costo_unificado_actual("barras") === df_articulos_no_movimiento_no_costo("codigo_barra")) && (df_costo_unificado_actual("fecha_df") === df_articulos_no_movimiento_no_costo("fecha")), "inner").select(col("codigo_articulo").as("codigo"), col("barras"), df_articulos_no_movimiento_no_costo("fecha").as("fecha_stock"), col("movimientos_agrupados"), col("costo").as("costo_unitario"), col("costo_anterior"), col("precio_mayorista").as("precio_actual_mayorista"), col("precio_minorista").as("precio_actual_minorista"))
-    //ESTE BLOQUE APLICARIA PARA "con_movimientos" TAMBIEN, CHEQUEAR EH
+      val df_costo_unificado_actual = joinedDF.join(df_costo_unificado_con_anterior.as("cu"),(joinedDF("codigo_barra") === df_costo_unificado_con_anterior("barras")) && (joinedDF("max_fecha_vigencia") === df_costo_unificado_con_anterior("fecha_vigencia_desde")),"inner").select(col("cu.*"),joinedDF("fecha").as("fecha_df")).distinct()
 
-
-    //CORREGIR EL SELECT (para sin_mov_sin_costo, ya que lo copie de con_movimientos) Y VERIRIFICAR IGUALMENTE DE ACA PARA ABAJO
-      val df_precios = df_costo_unificado_actual.join(df_articulos_no_movimiento_no_costo, (df_costo_unificado_actual("barras") === df_articulos_no_movimiento_no_costo("codigo_barra")), "inner").select(col("codigo_articulo").as("codigo"), col("barras"), df_articulos_no_movimiento_no_costo("fecha").as("fecha_stock"), col("movimientos_agrupados"), col("costo").as("costo_unitario"), col("costo_anterior"), col("precio_mayorista").as("precio_actual_mayorista"), col("precio_minorista").as("precio_actual_minorista"))
+      val df_precios = df_costo_unificado_actual.join(df_articulos_no_movimiento_no_costo, (df_costo_unificado_actual("barras") === df_articulos_no_movimiento_no_costo("codigo_barra")) && (df_costo_unificado_actual("fecha_df") === df_articulos_no_movimiento_no_costo("fecha")), "inner").select(col("codigo"), col("barras"), df_articulos_no_movimiento_no_costo("fecha").as("fecha_stock"), col("costo").as("costo_unitario"), col("costo_anterior"), col("precio_mayorista").as("precio_actual_mayorista"), col("precio_minorista").as("precio_actual_minorista"))
 
         // Se filtra el stock para el día de hoy (ya que al haber movimientos, se realizó el cálculo para tener el nuevo stock del día)
       val df_stock_filtrado = df_stock.filter(f"fecha_stock BETWEEN ${fecha_inicial} AND ${fecha_final}")
