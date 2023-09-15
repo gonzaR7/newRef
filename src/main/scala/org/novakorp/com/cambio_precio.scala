@@ -22,7 +22,7 @@ object cambio_precio extends SparkSessionWrapper  {
     val df_sin_mov_cu_temp=df_costo_unificado_periodo.as("cu").join(df_movimientos, df_costo_unificado_periodo("barras")===df_movimientos("codigo_barra"),"left_outer").select(col("cu.*")).withColumnRenamed("fecha_vigencia_desde","fecha_stock")
 
     // Join con articulos para agregar Codigo.
-    val df_sin_mov_cu=df_sin_mov_cu_temp.as("cu").join(df_articulos, df_sin_mov_cu_temp("barras")===df_articulos("codigo_barra"),"inner").select(col("cu.*"),col("codigo"))
+    val df_sin_mov_cu=df_sin_mov_cu_temp.as("cu").join(df_articulos, df_sin_mov_cu_temp("barras")===df_articulos("barras"),"inner").select(col("cu.*"),col("codigo"))
 
     val joinedDF = df_sin_mov_cu
       .join(df_stock,(df_sin_mov_cu("codigo") === df_stock("codigo")) && (df_stock("fecha_stock") < df_sin_mov_cu("fecha_stock")),"inner")
