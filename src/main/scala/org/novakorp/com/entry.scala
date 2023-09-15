@@ -1,11 +1,5 @@
 package org.novakorp.com
-import org.apache.spark.sql.{DataFrame, Row}
 import org.apache.spark.sql.functions._
-import org.apache.spark.storage.StorageLevel
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import org.novakorp.com.functions
-
 
 object entry extends SparkSessionWrapper {
 
@@ -17,15 +11,11 @@ object entry extends SparkSessionWrapper {
     val fecha_inicial_corrida: String = args(3)
     val fecha_final_corrida: String = args(4)
 
-    val fechaHoy = LocalDate.now()
-    val formato = DateTimeFormatter.ofPattern("yyyyMMdd")
-    val fechaFormateada = fechaHoy.format(formato)
-
     print("FECHAS")
     println("")
-    print(s"DESDE -> ${fecha_inicial_corrida}")
+    print(s"DESDE -> $fecha_inicial_corrida")
     println("")
-    print(s"HASTA -> ${fecha_final_corrida}")
+    print(s"HASTA -> $fecha_final_corrida")
     println("")
 
     println("")
@@ -36,15 +26,15 @@ object entry extends SparkSessionWrapper {
     val df_articulos = spark.sql("SELECT codigo,barras,id_seccion,id_departamento,id_grupo,id_rubro FROM raw.articulos WHERE enganchado = '0'")
 
     // Trae todos los movimientos
-    val query_movimientos = s"""select codigo_barra,codigo_articulo,cantidad_movimiento,fecha,multiplicador_stock from cur.movimientos_detalle_unificado where fecha between '${fecha_inicial_corrida}' and '${fecha_final_corrida}' and sucursal='${sucursal}'"""
+    val query_movimientos = s"""select codigo_barra,codigo_articulo,cantidad_movimiento,fecha,multiplicador_stock from cur.movimientos_detalle_unificado where fecha between '$fecha_inicial_corrida' and '$fecha_final_corrida' and sucursal='$sucursal'"""
 
-    val df_movimientos: DataFrame = spark.sql(query_movimientos)
+    val df_movimientos = spark.sql(query_movimientos)
 
     val query_costo_unificado = """SELECT id_costo_unificado,fecha_vigencia_desde,barras,costo,precio_minorista,precio_mayorista FROM cur.costo_unificado """
 
     val df_costo_unificado = spark.sql(query_costo_unificado)
 
-    val query_stock = s"select * FROM ${stock_table}"
+    val query_stock = s"select * FROM $stock_table"
 
     val df_stock = spark.sql(query_stock)
 
@@ -88,11 +78,11 @@ object entry extends SparkSessionWrapper {
 
     val df_hoy = df_con_mov_con_cu.union(df_con_movimientos).union(df_cambio_precio).union(df_sin_mov_sin_cambio_precio)
 
-    val dfToInsert = df_hoy.withColumn("sucursal",lit(sucursal.concat("_").concat(fechaFormateada)))
+    val dfToInsert = df_hoy.withColumn("sucursal",lit(sucursal)).select(col("codigo"),col("barras"),col("movimientos_agrupados"),col("total_unidades"),col("costo_unitario"),col("costo_anterior"),col("precio_actual_mayorista"),col("precio_actual_minorista"),col("resultado_por_tenencia"),col("suscursal"),col("fecha_stock"))
 
     functions.saveCurrentDF(dfToInsert,outputTable)
 
-    println(s"Terminada la ingesta en la sucursal ${sucursal} desde ${fecha_inicial_corrida} hasta ${fecha_final_corrida}")
+    println(s"Terminada la ingesta en la sucursal $sucursal desde $fecha_inicial_corrida hasta $fecha_final_corrida")
 
   }
 }

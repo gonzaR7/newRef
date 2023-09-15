@@ -8,8 +8,7 @@ object functions extends SparkSessionWrapper {
 
   //Ingesta a la tabla
   def saveCurrentDF(df: DataFrame, outputTable: String): Unit = {
-    df.coalesce(1)
-      .write
+    df.write
       .mode("overwrite")
       .option("hive.exec.dynamic.partition", "true")
       .option("hive.exec.dynamic.partition.mode", "nonstrict")
