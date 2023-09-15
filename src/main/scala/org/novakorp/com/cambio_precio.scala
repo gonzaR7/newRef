@@ -17,7 +17,7 @@ object cambio_precio extends SparkSessionWrapper  {
     // Filtrar las filas donde row_num es igual a 1 (la primera fila en cada grupo)
     val resultDf = rankedDf.filter(col("row_num") === 1).drop("row_num")
 
-    val df_costo_unificado_periodo=resultDf.filter(f"fecha_vigencia_desde BETWEEN $fecha_inicial AND $fecha_final")
+    val df_costo_unificado_periodo=resultDf.filter(f"fecha_vigencia_desde BETWEEN '$fecha_inicial' AND '$fecha_final''")
 
     val df_sin_mov_cu_temp=df_costo_unificado_periodo.as("cu").join(df_movimientos, df_costo_unificado_periodo("barras")===df_movimientos("codigo_barra"),"left_outer").select(col("cu.*")).withColumnRenamed("fecha_vigencia_desde","fecha_stock")
 
