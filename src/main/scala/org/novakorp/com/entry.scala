@@ -78,7 +78,7 @@ object entry extends SparkSessionWrapper {
 
     val df_hoy = df_con_mov_con_cu.union(df_con_movimientos).union(df_cambio_precio).union(df_sin_mov_sin_cambio_precio)
 
-    val dfToInsert = df_hoy.withColumn("sucursal",lit(sucursal)).select(col("codigo"),col("barras"),col("movimientos_agrupados"),col("total_unidades"),col("costo_unitario"),col("costo_anterior"),col("precio_actual_mayorista"),col("precio_actual_minorista"),col("resultado_por_tenencia"),col("suscursal"),col("fecha_stock"))
+    val dfToInsert = df_hoy.withColumn("sucursal",lit(sucursal)).select(col("codigo"),col("barras"),col("movimientos_agrupados"),col("total_unidades"),col("costo_unitario"),col("costo_anterior"),col("precio_actual_mayorista"),col("precio_actual_minorista"),col("resultado_por_tenencia"),col("sucursal"),col("fecha_stock"))
 
     functions.saveCurrentDF(dfToInsert,outputTable)
 
