@@ -10,7 +10,7 @@ object con_mov_con_cu extends SparkSessionWrapper  {
         // Se agrupan los movimientos del día por codigo
         val df_mov_agrupado = df_movimientos.groupBy("codigo_articulo", "fecha", "codigo_barra").agg(sum(col("cantidad_movimiento") * col("multiplicador_stock").cast("int")).as("movimientos_agrupados"))
 
-        val df_costo_unificado_filtered= df_costo_unificado_con_anterior.filter(f"fecha_vigencia_desde BETWEEN '$fecha_inicial' AND '$fecha_final'")
+val df_costo_unificado_filtered = df_costo_unificado_con_anterior.filter(f"fecha_vigencia_desde BETWEEN '$fecha_inicial' AND '$fecha_final'")
 
         // Definir una ventana particionada por "fecha_vigencia_desde" y "barras"
         // y ordenada por "id_costo_unificado" en orden descendente
