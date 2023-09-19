@@ -9,7 +9,7 @@ object con_movimientos extends SparkSessionWrapper  {
   def CalcularDataFrame(df_con_mov_con_cu:DataFrame, df_movimientos: DataFrame , df_costo_unificado_con_anterior: DataFrame, df_stock: DataFrame,fecha_inicial: String, fecha_final: String): DataFrame = {
 
     // Se filtran los artículos que no tienen cambio de precio en el día
-    val df_con_mov_filtrado: DataFrame = df_movimientos.join(df_con_mov_con_cu, (df_movimientos("codigo_barra")===df_con_mov_con_cu("barras")) && (df_movimientos("fecha")===df_con_mov_con_cu("fecha_stock"))git, "left_anti")
+    val df_con_mov_filtrado: DataFrame = df_movimientos.join(df_con_mov_con_cu, (df_movimientos("codigo_barra")===df_con_mov_con_cu("barras")) && (df_movimientos("fecha")===df_con_mov_con_cu("fecha_stock")), "left_anti")
 
     // Se agrupan los movimientos del día por codigo
     val df_mov_agrupado: DataFrame = df_con_mov_filtrado.groupBy("codigo_articulo", "fecha", "codigo_barra").agg(sum(col("cantidad_movimiento") * col("multiplicador_stock").cast("int")).as("movimientos_agrupados"))
