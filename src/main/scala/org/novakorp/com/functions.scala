@@ -1,7 +1,7 @@
 package org.novakorp.com
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.expressions.Window
-import org.apache.spark.sql.functions.{col, lag, when}
+import org.apache.spark.sql.functions.{col, lag, lead, lit, when}
 
 
 object functions extends SparkSessionWrapper {
@@ -20,5 +20,13 @@ object functions extends SparkSessionWrapper {
 
     val df_costo_unificado_con_anterior = df.withColumn("costo_anterior", when(lag("costo", 1).over(ventana).isNull, col("costo")).otherwise(lag("costo", 1).over(ventana)))
     df_costo_unificado_con_anterior
+  }
+
+  def calcularResultadoPorTenencia(df:DataFrame): DataFrame = {
+    import org.apache.spark.sql.expressions.Window
+    val windowStock = Window.partitionBy("codigo").orderBy("fecha_stock")
+
+    val dfLead = df.withColumn("stock_siguiente", lead("total_unidades", 1).over(windowStock)).withColumn("precio_siguiente", lead("costo_unitario", 1).over(windowStock)).withColumn("precio_anterior_siguiente", lead("costo_anterior", 1).over(windowStock)).withColumn("resultado_por_tenencia", when(col("costo_unitario") =!= col("precio_siguiente"),((col("precio_siguiente") - col("precio_anterior_siguiente")) * col("total_unidades"))).otherwise(lit(0))).drop("stock_siguiente", "precio_siguiente", "precio_anterior_siguiente")
+    dfLead
   }
 }
