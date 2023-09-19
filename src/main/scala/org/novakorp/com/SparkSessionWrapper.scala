@@ -21,7 +21,7 @@ trait SparkSessionWrapper extends Serializable {
     .set("spark.sql.hive.metastore.version", "2.1.1") // 3.1.2 (VERSION DE HIVE) 2.1.1 version metastore
     .set("spark.sql.hive.metastore.jars", "/usr/hdp/current/spark3-client/jars/*")
     .set("spark.sql.hive.metastore.jars.ivy", "/usr/hdp/current/spark3-client/jars/ivy-2.4.0.jar")
-    //.set("spark.shuffle.service.enabled", "true")
+    .set("spark.shuffle.service.enabled", "true")
     .set("spark.sql.debug.maxToStringFields", "1000")
     .set("spark.driver.memory","20g")
     .set("spark.executor.memory","10g")

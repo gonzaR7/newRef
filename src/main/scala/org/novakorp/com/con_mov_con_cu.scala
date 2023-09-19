@@ -29,7 +29,7 @@ val df_costo_unificado_filtered = df_costo_unificado_con_anterior.filter(f"fecha
         val df_stock_filtrado = df_stock.filter(f"fecha_stock BETWEEN '$fecha_inicial' AND '$fecha_final'")
 
         // Se joinea el stock actual junto con los artículos con movimientos y sus precios, a su vez se calcula RxT
-        val df_pre_final = df_stock_filtrado.as("stock").join(df_con_mov_con_cu.as("precios"),(df_stock_filtrado("codigo")===df_con_mov_con_cu("codigo"))&&(df_stock_filtrado("fecha_stock")===df_con_mov_con_cu("fecha_stock")) , "inner").select(df_con_mov_con_cu("codigo"), col("barras"), col("precios.fecha_stock"), col("movimientos_agrupados"), col("stock.existencia").as("total_unidades"), col("costo_unitario"), col("costo_anterior"), col("precio_actual_mayorista"), col("precio_actual_minorista"), col("resultado_por_tenencia")).distinct
+        val df_pre_final = df_stock_filtrado.as("stock").join(df_con_mov_con_cu.as("precios"),(df_stock_filtrado("codigo")===df_con_mov_con_cu("codigo"))&&(df_stock_filtrado("fecha_stock")===df_con_mov_con_cu("fecha_stock")) , "inner").select(df_con_mov_con_cu("codigo"), col("barras"), col("precios.fecha_stock"), col("movimientos_agrupados"), col("stock.existencia").as("total_unidades"), col("costo_unitario"), col("costo_anterior"), col("precio_actual_mayorista"), col("precio_actual_minorista")).distinct
 
         df_pre_final
     }

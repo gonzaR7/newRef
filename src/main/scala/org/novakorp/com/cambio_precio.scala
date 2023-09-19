@@ -35,7 +35,7 @@ object cambio_precio extends SparkSessionWrapper  {
 
     val df_join_stock = df_sin_mov_cu_max_stock.join(df_stock, df_sin_mov_cu_max_stock("codigo")===df_stock("codigo")&&(df_sin_mov_cu_max_stock("max_fecha_stock")===df_stock("fecha_stock")), "inner").select(df_sin_mov_cu_max_stock("barras"),df_sin_mov_cu_max_stock("costo_unitario"),df_sin_mov_cu_max_stock("costo_anterior"),df_sin_mov_cu_max_stock("precio_actual_minorista"),df_sin_mov_cu_max_stock("precio_actual_mayorista"),df_stock("codigo"), df_stock("existencia"), df_sin_mov_cu_max_stock("fecha_stock"))
 
-    val df_pre_final=  df_join_stock.withColumn("movimientos_agrupados", lit(0)).select(col("codigo"), col("barras"), col("fecha_stock"), col("movimientos_agrupados"), col("existencia").as("total_unidades"), col("costo_unitario"), col("costo_anterior"), col("precio_actual_mayorista"), col("precio_actual_minorista"), col("resultado_por_tenencia")).distinct
+    val df_pre_final=  df_join_stock.withColumn("movimientos_agrupados", lit(0)).select(col("codigo"), col("barras"), col("fecha_stock"), col("movimientos_agrupados"), col("existencia").as("total_unidades"), col("costo_unitario"), col("costo_anterior"), col("precio_actual_mayorista"), col("precio_actual_minorista")).distinct
 
     df_pre_final
   }
