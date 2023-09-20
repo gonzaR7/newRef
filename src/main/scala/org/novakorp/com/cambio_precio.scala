@@ -19,7 +19,9 @@ object cambio_precio extends SparkSessionWrapper  {
 
     val df_costo_unificado_periodo=resultDf.filter(f"fecha_vigencia_desde BETWEEN '$fecha_inicial' AND '$fecha_final'")
 
-    val df_sin_mov_cu_temp=df_costo_unificado_periodo.as("cu").join(df_movimientos, (df_costo_unificado_periodo("barras")===df_movimientos("codigo_barra"))  && (df_costo_unificado_periodo("fecha_vigencia_desde") === df_movimientos("fecha")),"left_anti").select(col("cu.*")).withColumnRenamed("fecha_vigencia_desde","fecha_stock")
+    val df_enganchado = df_movimientos.join(df_articulos,df_movimientos("codigo_articulo") === df_articulos("codigo"),"inner").select(df_movimientos("*"),df_articulos("barras").as("barras_enganchado"))
+
+    val df_sin_mov_cu_temp=df_costo_unificado_periodo.as("cu").join(df_enganchado, (df_costo_unificado_periodo("barras")===df_enganchado("barras_enganchado"))  && (df_costo_unificado_periodo("fecha_vigencia_desde") === df_enganchado("fecha")),"left_anti").select(col("cu.*")).withColumnRenamed("fecha_vigencia_desde","fecha_stock")
 
     // Join con articulos para agregar Codigo.
     val df_sin_mov_cu=df_sin_mov_cu_temp.as("cu").join(df_articulos, df_sin_mov_cu_temp("barras")===df_articulos("barras"),"inner").select(col("cu.*"),col("codigo"))
