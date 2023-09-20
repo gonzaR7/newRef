@@ -9,10 +9,11 @@ object sin_mov_ni_costo extends SparkSessionWrapper  {
       // Crear un DataFrame con todas las fechas en el período
       val df_fechas = spark.sql(s"SELECT sequence(to_date('$fecha_inicial'), to_date('$fecha_final'), interval 1 day) AS fecha").withColumn("fecha", explode(col("fecha")))
 
-      val df_articulos_no_movimiento_no_costo = df_fechas
-        .join(df_articulos.select(col("codigo").as("codigo_articulo"), col("barras").as("codigo_barra")), Seq.empty[String], "cross")
-        .join(df_movimientos, Seq("codigo_articulo", "fecha"), "left_anti")
-        .join(df_costo_unificado_con_anterior.select(col("barras").as("codigo_barra"), col("fecha_vigencia_desde").as("fecha")), Seq("codigo_barra", "fecha"), "left_anti").withColumnRenamed("codigo_articulo","codigo")
+      val df_articulos_con_fechas = df_fechas.join(df_articulos.select(col("codigo").as("codigo_articulo"), col("barras").as("codigo_barra")), Seq.empty[String], "cross")
+
+      val df_articulos_sin_mov = df_articulos_con_fechas.join(df_movimientos, Seq("codigo_articulo", "fecha"), "left_anti")
+
+      val df_articulos_no_movimiento_no_costo =  df_articulos_sin_mov.join(df_costo_unificado_con_anterior.select(col("barras").as("codigo_barra"), col("fecha_vigencia_desde").as("fecha")), Seq("codigo_barra", "fecha"), "left_anti").withColumnRenamed("codigo_articulo","codigo")
 
       //Para cada codigo de barra con su fecha me traigo la fecha de su ultimo cambio de precio
       val joinedDF = df_articulos_no_movimiento_no_costo.join(df_costo_unificado_con_anterior,(df_articulos_no_movimiento_no_costo("codigo_barra") === df_costo_unificado_con_anterior("barras")) && (df_costo_unificado_con_anterior("fecha_vigencia_desde") < df_articulos_no_movimiento_no_costo("fecha")),"inner").groupBy(df_articulos_no_movimiento_no_costo("codigo_barra"),df_articulos_no_movimiento_no_costo("fecha")).agg(max(df_costo_unificado_con_anterior("fecha_vigencia_desde")).alias("max_fecha_vigencia"))
