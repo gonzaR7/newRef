@@ -7,7 +7,6 @@ object con_mov_con_cu extends SparkSessionWrapper  {
 
     def CalcularDataFrame(df_movimientos: DataFrame , df_costo_unificado_con_anterior: DataFrame,  df_stock: DataFrame,df_articulos: DataFrame,fecha_inicial: String, fecha_final: String): DataFrame = {
 
-
         val df_enganchado = df_movimientos.join(df_articulos,df_movimientos("codigo_articulo") === df_articulos("codigo"),"inner").select(df_movimientos("*"),df_articulos("barras").as("barras_enganchado"))
 
         // Se agrupan los movimientos del día por codigo

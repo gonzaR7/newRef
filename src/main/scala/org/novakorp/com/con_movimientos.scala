@@ -8,13 +8,13 @@ object con_movimientos extends SparkSessionWrapper  {
 
   def CalcularDataFrame(df_con_mov_con_cu:DataFrame, df_movimientos: DataFrame , df_costo_unificado_con_anterior: DataFrame, df_stock: DataFrame,df_articulos: DataFrame,fecha_inicial: String, fecha_final: String): DataFrame = {
 
-    // Se filtran los artículos que no tienen cambio de precio en el día
-    val df_con_mov_filtrado = df_movimientos.join(df_con_mov_con_cu, (df_movimientos("codigo_barra")===df_con_mov_con_cu("barras")) && (df_movimientos("fecha")===df_con_mov_con_cu("fecha_stock")), "left_anti")
+    val df_enganchado = df_movimientos.join(df_articulos,df_movimientos("codigo_articulo") === df_articulos("codigo"),"inner").select(df_movimientos("*"),df_articulos("barras").as("barras_enganchado"))
 
-    val df_enganchado = df_con_mov_filtrado.join(df_articulos,df_con_mov_filtrado("codigo_articulo") === df_articulos("codigo"),"inner").select(df_con_mov_filtrado("*"),df_articulos("barras").as("barras_enganchado"))
+    // Se filtran los artículos que no tienen cambio de precio en el día
+    val df_con_mov_filtrado = df_enganchado.join(df_con_mov_con_cu, (df_enganchado("barras_enganchado")===df_con_mov_con_cu("barras")) && (df_enganchado("fecha")===df_con_mov_con_cu("fecha_stock")), "left_anti")
 
     // Se agrupan los movimientos del día por codigo
-    val df_mov_agrupado = df_enganchado.groupBy("codigo_articulo", "fecha", "barras_enganchado").agg(sum(col("cantidad_movimiento") * col("multiplicador_stock").cast("int")).as("movimientos_agrupados")).withColumnRenamed("barras_enganchado","codigo_barra")
+    val df_mov_agrupado = df_con_mov_filtrado.groupBy("codigo_articulo", "fecha", "barras_enganchado").agg(sum(col("cantidad_movimiento") * col("multiplicador_stock").cast("int")).as("movimientos_agrupados")).withColumnRenamed("barras_enganchado","codigo_barra")
 
     val joinedDF = df_mov_agrupado.join(df_costo_unificado_con_anterior,(df_mov_agrupado("codigo_barra") === df_costo_unificado_con_anterior("barras")) && (df_costo_unificado_con_anterior("fecha_vigencia_desde") < df_mov_agrupado("fecha")),"inner").groupBy(df_mov_agrupado("codigo_barra"),df_mov_agrupado("fecha")).agg(max(df_costo_unificado_con_anterior("fecha_vigencia_desde")).alias("max_fecha_vigencia"))
 
