@@ -16,7 +16,7 @@ object functions extends SparkSessionWrapper {
   }
 
   def agregarCostoAnterior(df: DataFrame): DataFrame = {
-    val ventana = Window.partitionBy("barras").orderBy("id_costo_unificado")
+    val ventana = Window.partitionBy("barras").orderBy("fecha_vigencia_desde","id_costo_unificado")
 
     val df_costo_unificado_con_anterior = df.withColumn("costo_anterior", when(lag("costo", 1).over(ventana).isNull, col("costo")).otherwise(lag("costo", 1).over(ventana)))
     df_costo_unificado_con_anterior
