@@ -5,12 +5,15 @@ import org.apache.spark.sql.expressions.Window
 
 object con_mov_con_cu extends SparkSessionWrapper  {
 
-    def CalcularDataFrame(df_movimientos: DataFrame , df_costo_unificado_con_anterior: DataFrame,  df_stock: DataFrame,fecha_inicial: String, fecha_final: String): DataFrame = {
+    def CalcularDataFrame(df_movimientos: DataFrame , df_costo_unificado_con_anterior: DataFrame,  df_stock: DataFrame,df_articulos: DataFrame,fecha_inicial: String, fecha_final: String): DataFrame = {
+
+
+        val df_enganchado = df_movimientos.join(df_articulos,df_movimientos("codigo_articulo") === df_articulos("codigo"),"inner").select(df_movimientos("*"),df_articulos("barras").as("barras_enganchado"))
 
         // Se agrupan los movimientos del día por codigo
-        val df_mov_agrupado = df_movimientos.groupBy("codigo_articulo", "fecha", "codigo_barra").agg(sum(col("cantidad_movimiento") * col("multiplicador_stock").cast("int")).as("movimientos_agrupados"))
+        val df_mov_agrupado = df_enganchado.groupBy("codigo_articulo", "fecha", "barras_enganchado").agg(sum(col("cantidad_movimiento") * col("multiplicador_stock").cast("int")).as("movimientos_agrupados")).withColumnRenamed("barras_enganchado","codigo_barra")
 
-val df_costo_unificado_filtered = df_costo_unificado_con_anterior.filter(f"fecha_vigencia_desde BETWEEN '$fecha_inicial' AND '$fecha_final'")
+        val df_costo_unificado_filtered = df_costo_unificado_con_anterior.filter(f"fecha_vigencia_desde BETWEEN '$fecha_inicial' AND '$fecha_final'")
 
         // Definir una ventana particionada por "fecha_vigencia_desde" y "barras"
         // y ordenada por "id_costo_unificado" en orden descendente
